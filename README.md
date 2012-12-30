@@ -1,4 +1,4 @@
-*Jeremy Cole's AVR Projects*
+# Jeremy Cole's AVR Projects #
 
 Many smaller projects written by Jeremy Cole on Atmel AVR MCUs:
 
