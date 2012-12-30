@@ -1,0 +1,14 @@
+Current TODO list is:
+
+* Ability to shut down a UART after having used it, freeing the buffers
+  allocated and shutting it down.
+   
+* Ability to temporarily suspend a UART to save power?
+
+* Ability to toggle an RTS pin for RS485 half-duplex.
+
+* Test more ATmega MCUs, especially with 2+ UARTs.
+
+* Optimization of the ISRs to not do string based searches for every call.
+
+* Add support for the ATxmega MCUs, especially with 4+ UARTs. 

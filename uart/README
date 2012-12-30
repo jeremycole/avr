@@ -1,0 +1,30 @@
+Interrupt-driven UART library with support for multiple UARTs, using ring
+buffers for receive/transmit and support for stdout/printf.  At compile time,
+all UARTs are detected and populated into the uart_descriptions global
+structure, which is used by other functions during runtime.
+
+The core of this library is closely based on Peter Fleury's UART library,
+with heavy refactoring, reformatting, and updating.
+
+This library is based on Peter Fleury's original files with the IDs: 
+  "uart.c,v 1.6.2.1 2007/07/01 11:14:38"
+  "uart.h,v 1.8.2.1 2007/07/01 11:14:38"
+
+Peter's copyright is as follows:
+  Copyright (c) 2006 Peter Fleury <pfleury@gmx.ch> http://jump.to/fleury
+
+DESCRIPTION:
+    An interrupt is generated when the UART has finished transmitting or
+    receiving a byte. The interrupt handling routines use circular buffers
+    for buffering received and transmitted data.
+    
+    The UART_RX_BUFFER_SIZE and UART_TX_BUFFER_SIZE variables define
+    the buffer size in bytes. Note that these variables must be a 
+    power of 2.
+    
+USAGE:
+    Refer to the header file uart.h for a description of the routines.
+    See also example test_uart.c.
+
+NOTES:
+    Originally based on Atmel Application Note AVR306.
