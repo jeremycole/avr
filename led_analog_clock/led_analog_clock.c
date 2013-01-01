@@ -597,8 +597,11 @@ int main(void)
   i2c_init();
 
   /* Enable pullups on the I2C pins so we don't need external ones. */
-  //DDRC  = _BV(PC0) | _BV(PC1);
-  //PORTC = _BV(PC0) | _BV(PC1);
+  if((PINC & (_BV(PC0) | _BV(PC1))) == 0)
+  {
+    DDRC  = _BV(PC0) | _BV(PC1);
+    PORTC = _BV(PC0) | _BV(PC1);
+  }
 
   sei();
 
