@@ -209,6 +209,19 @@ uint8_t jit_random_all_bars_50ms_40x(led_sequence_step_t *step, uint8_t status)
   return LED_SEQUENCER_JIT_CONTINUE;
 }
 
+uint8_t jit_random_all_bars_50ms_long(led_sequence_step_t *step, uint8_t status)
+{
+  static uint16_t i;
+  if(status == LED_SEQUENCER_JIT_INITIAL) i = 0;
+
+  if(i++ >= 10000)
+    return LED_SEQUENCER_JIT_DEQUEUE;
+
+  led_sequencer_sequence_modify_step(step, led_mapping_around_all_bars[rand() % 20], 50);
+
+  return LED_SEQUENCER_JIT_CONTINUE;
+}
+
 void enqueue_secondly_show(void)
 {
   /* No show */
@@ -227,6 +240,29 @@ void enqueue_hourly_show(void)
   led_sequencer_sequence_push_back_jit("M", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_reverse_20ms);
   led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_qhour_loop_25ms);
   led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_random_all_bars_50ms_40x);
+}
+
+void enqueue_nye_show(void)
+{
+  led_sequencer_sequence_clear("H");
+  led_sequencer_sequence_clear("M");
+  led_sequencer_sequence_push_back_jit("M", LED_SEQUENCER_STEP_SHOW, "c", jit_random_all_bars_50ms_long);
+  led_sequencer_sequence_push_back_jit("S", LED_SEQUENCER_STEP_SHOW, "c", jit_qhour_loop_25ms);
+  led_sequencer_sequence_push_back_jit("S", LED_SEQUENCER_STEP_SHOW, "c", jit_qhour_loop_25ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_10ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_reverse_20ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_10ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_reverse_20ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_10ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_reverse_20ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_10ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_reverse_20ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_10ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_reverse_20ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_10ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_reverse_20ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_10ms);
+  led_sequencer_sequence_push_back_jit("H", LED_SEQUENCER_STEP_SHOW, "c", jit_minute_loop_reverse_20ms);
 }
 
 /**
@@ -560,10 +596,20 @@ void update_hms(void)
     last_second = current_time.second;
   }
 
+  /* Do something nice for New Years */
+  if(offset_time.month == 1 && offset_time.date == 1
+		  && offset_time.hour == 0 && offset_time.minute == 0
+		  && offset_time.second == 0)
+  {
+    enqueue_nye_show();
+    last_hour   = current_time.hour;
+    last_minute = current_time.minute;
+  }
+
   /*
    * If the hour has changed, enqueue the hourly show.
    */
-  if(current_time.hour != last_hour)
+  else if(current_time.hour != last_hour)
   {
     enqueue_hourly_show();
     last_hour = current_time.hour;
