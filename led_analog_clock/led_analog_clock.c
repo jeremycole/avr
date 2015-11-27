@@ -72,6 +72,8 @@ uint8_t last_hour   = 0;
 uint8_t last_minute = 0;
 uint8_t last_second = 0;
 
+uint16_t time_elapsed_since_gps_sync = 0;
+
 volatile uint8_t ready_flags = 0;
 
 #define READY_UART_DATA  1
@@ -566,6 +568,13 @@ void update_hms(void)
   uint8_t rc;
   rtc_datetime_24h_t offset_time;
 
+  if(++time_elapsed_since_gps_sync > 1800)
+  {
+    printf_P(PSTR("Maximum time limit exceeded since last GPS sync, syncing...\n"));
+    command_set_from_gps();
+    time_elapsed_since_gps_sync = 0;
+  }
+
   rc = rtc_read(rtc, &current_time);
   if(rc) return;
 
@@ -642,7 +651,12 @@ int main(void)
 
   i2c_init();
 
-  /* Enable pullups on the I2C pins so we don't need external ones. */
+  /*
+   * Test if pullup is required on the I2C pins, and enable if the pins are
+   * reading low. This allows external pullups to optionally be used, so that
+   * for example the I2C bus can be pulled up to 3.3V to allow communication
+   * between 3.3V and 5V devices at 3.3V.
+   */
   if((PINC & (_BV(PC0) | _BV(PC1))) == 0)
   {
     DDRC  = _BV(PC0) | _BV(PC1);
@@ -725,7 +739,7 @@ int main(void)
    */
   while(1)
   {
-	  /* Handle UART input when ready. */
+    /* Handle UART input when ready. */
     if(ready_flags & READY_UART_DATA)
     {
       ready_flags &= ~READY_UART_DATA;
