@@ -16,7 +16,7 @@ avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avr
 avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avrdude/EEPROMFromConfig=true
 avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avrdude/FlashFile=
 avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avrdude/FlashFromConfig=true
-avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avrdude/Fuses/ByteValues=194\:209\:252
+avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avrdude/Fuses/ByteValues=194\:209\:253
 avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avrdude/Fuses/FileName=
 avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avrdude/Fuses/MCUid=atmega1284p
 avrtarget/de.innot.avreclipse.configuration.app.release.881431360.1697256572/avrdude/Fuses/UseFile=false
