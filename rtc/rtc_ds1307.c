@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2010, Jeremy Cole <jeremy@jcole.us>
+    Copyright (c) 2015, Jeremy Cole <jeremy@jcole.us>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
