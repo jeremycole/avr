@@ -38,6 +38,8 @@
 #define LED_DISPLAY led_analog_clock_v2
 #include "led_mapping.h"
 
+const int gps_leap_second_offset = 1;
+
 #define COMMAND_BUFFER_SIZE 32
 
 typedef struct _configuration_t
@@ -71,6 +73,11 @@ rtc_dst_date_t usa_dst_dates[] =
 uint8_t last_hour   = 0;
 uint8_t last_minute = 0;
 uint8_t last_second = 0;
+
+struct {
+  rtc_datetime_24h_t dt;
+  uint8_t gps_signal_strength;
+} gps_data;
 
 uint16_t time_elapsed_since_gps_sync = 0;
 
@@ -111,12 +118,13 @@ void notice_uart_input(uart_t *uart)
  * device over I2C. This is essentially fire-and-forget, as there's no check
  * that the remote device exists or received the data correctly.
  */
-void write_remote_lcd(rtc_datetime_24h_t *dt)
+void write_remote_lcd(rtc_datetime_24h_t *dt, uint8_t gps_signal_strength)
 {
   if(0 == i2c_start(0x70, I2C_WRITE))
   {
-    i2c_write_array((uint8_t *)dt, 8);
+    i2c_write_array((uint8_t *)dt, sizeof(*dt));
   }
+  i2c_write(gps_signal_strength);
   i2c_stop();
 }
 
@@ -345,30 +353,6 @@ void command_offset(char *command)
   configuration_save();
 }
 
-/**
- * Execute the "G" command, which gets the current time and prints it.
- */
-void command_get(char *command)
-{
-  rtc_datetime_24h_t offset_time;
-
-  rtc_offset_time(&current_time, &offset_time,
-    configuration.tz_offset + configuration.dst_offset);
-
-  printf_P(
-    PSTR("UTC  : %04i-%02i-%02i %02i:%02i:%02i (%s)\n"),
-    current_time.year, current_time.month,  current_time.date,
-    current_time.hour, current_time.minute, current_time.second,
-    rtc_dow_names[current_time.day_of_week]);
-
-  printf_P(
-    PSTR("Local: %04i-%02i-%02i %02i:%02i:%02i (%s) [tz %i, dst %i]\n"),
-    offset_time.year, offset_time.month,  offset_time.date,
-    offset_time.hour, offset_time.minute, offset_time.second,
-    rtc_dow_names[offset_time.day_of_week],
-    configuration.tz_offset, configuration.dst_offset);
-}
-
 uint8_t gps_read_ram(uint8_t address, uint8_t length, unsigned char *data)
 {
   uint8_t rc;
@@ -395,31 +379,99 @@ uint8_t gps_read_ram(uint8_t address, uint8_t length, unsigned char *data)
   return 0;
 }
 
-void command_get_gps(char *command)
+uint8_t update_gps()
 {
   uint8_t rc;
-  rtc_datetime_24h_t gps_time;
-  rc = gps_read_ram(0, 8, (unsigned char *)&gps_time);
+  rc = gps_read_ram(0, sizeof(gps_data), (unsigned char *)&gps_data);
   if(rc)
   {
     printf("Return from gps_read_ram: %d\n", rc);
-    return;
   }
+  return rc;
+}
+
+void command_get_gps()
+{
+  update_gps();
 
   printf_P(
-    PSTR("GPS  : %04i-%02i-%02i %02i:%02i:%02i (%s)\n"),
-    gps_time.year, gps_time.month,  gps_time.date,
-    gps_time.hour, gps_time.minute, gps_time.second,
-    rtc_dow_names[gps_time.day_of_week]);
+    PSTR("GPS  : %04i-%02i-%02i %02i:%02i:%02i.%03i (%s) [offset %i]\n"),
+    gps_data.dt.year, gps_data.dt.month,  gps_data.dt.date,
+    gps_data.dt.hour, gps_data.dt.minute, gps_data.dt.second,
+    gps_data.dt.millisecond,
+    rtc_dow_names[gps_data.dt.day_of_week],
+    gps_leap_second_offset);
+}
+
+/**
+ * Execute the "G" command, which gets the current time and prints it.
+ */
+void command_get()
+{
+  rtc_datetime_24h_t offset_time;
+
+  rtc_offset_time(&current_time, &offset_time,
+    configuration.tz_offset + configuration.dst_offset);
+
+  printf_P(
+    PSTR("UTC  : %04i-%02i-%02i %02i:%02i:%02i (%s)\n"),
+    current_time.year, current_time.month,  current_time.date,
+    current_time.hour, current_time.minute, current_time.second,
+    rtc_dow_names[current_time.day_of_week]);
+
+  printf_P(
+    PSTR("Local: %04i-%02i-%02i %02i:%02i:%02i (%s) [tz %i, dst %i]\n"),
+    offset_time.year, offset_time.month,  offset_time.date,
+    offset_time.hour, offset_time.minute, offset_time.second,
+    rtc_dow_names[offset_time.day_of_week],
+    configuration.tz_offset, configuration.dst_offset);
+
+  command_get_gps();
+}
+
+void wait_ms(uint16_t milliseconds)
+{
+  while(milliseconds > 100) {
+    _delay_ms(100);
+    milliseconds -= 100;
+  }
+
+  while(milliseconds > 10)
+  {
+    _delay_ms(10);
+    milliseconds -= 10;
+  }
+
+  while(milliseconds > 1)
+  {
+    _delay_ms(1);
+    milliseconds -= 1;
+  }
 }
 
 void command_set_from_gps(void)
 {
   uint8_t rc;
-  rtc_datetime_24h_t gps_time;
-  rc = gps_read_ram(0, 8, (unsigned char *)&gps_time);
-  printf_P(PSTR("Read time from GPS, rc=%i\n"), rc);
-  if(rc) return;
+
+  if(update_gps())
+    return;
+
+  if(gps_data.gps_signal_strength < 3)
+  {
+    printf_P(PSTR("GPS signal strength (%d) is unreliable. Aborting sync!\n"),
+        gps_data.gps_signal_strength);
+    return;
+  }
+
+  if(gps_data.dt.second < (59 - gps_leap_second_offset))
+  {
+    /* Adjust to the edge of the next second, don't deal with rollover */
+    printf_P(PSTR("Sleeping for %d ms to synchronize...\n"),
+        1000 - gps_data.dt.millisecond - 1);
+    wait_ms(1000 - gps_data.dt.millisecond - 1);
+    gps_data.dt.second += 1 + gps_leap_second_offset;
+    gps_data.dt.millisecond = 0;
+  }
 
   rc = rtc_clock_stop(rtc);
   printf_P(PSTR("Halted clock, rc=%i\n"), rc);
@@ -428,12 +480,12 @@ void command_set_from_gps(void)
   rtc_sqw_rate(rtc, 1);
 
   printf_P(PSTR("Setting time to %04i-%02i-%02i %02i:%02i:%02i (%s)\n"),
-      gps_time.year, gps_time.month, gps_time.date,
-      gps_time.hour, gps_time.minute, gps_time.second,
-      rtc_dow_names[gps_time.day_of_week]);
+      gps_data.dt.year, gps_data.dt.month, gps_data.dt.date,
+      gps_data.dt.hour, gps_data.dt.minute, gps_data.dt.second,
+      rtc_dow_names[gps_data.dt.day_of_week]);
 
   printf_P(PSTR("Trying to write RTC...\n"));
-  rc = rtc_write(rtc, &gps_time);
+  rc = rtc_write(rtc, &gps_data.dt);
   printf_P(PSTR("Wrote RTC, rc=%i\n"), rc);
 
   rc = rtc_clock_start(rtc);
@@ -468,7 +520,7 @@ void handle_command(char *command)
     command_set_from_gps();
     break;
   case 'G':
-    command_get(command);
+    command_get();
     break;
   case 'O':
     command_offset(command);
@@ -490,7 +542,7 @@ void handle_command(char *command)
     led_sequencer_run();
     break;
   case 'g':
-    command_get_gps(command);
+    command_get_gps();
     break;
   default:
     break;
@@ -568,7 +620,7 @@ void update_hms(void)
   uint8_t rc;
   rtc_datetime_24h_t offset_time;
 
-  if(++time_elapsed_since_gps_sync > 1800)
+  if(++time_elapsed_since_gps_sync > 1777)
   {
     printf_P(PSTR("Maximum time limit exceeded since last GPS sync, syncing...\n"));
     command_set_from_gps();
@@ -634,7 +686,8 @@ void update_hms(void)
   }
 
   led_sequencer_run();
-  write_remote_lcd(&offset_time);
+  update_gps();
+  write_remote_lcd(&offset_time, gps_data.gps_signal_strength);
 }
 
 int main(void)

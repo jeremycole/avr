@@ -39,8 +39,12 @@
 
 uart_t *u0;
 uart_t *u1;
-rtc_datetime_24h_t current_dt;
-uint8_t *current_dt_p;
+uint16_t current_time_ms = 0, last_time_ms = 0;
+struct {
+  rtc_datetime_24h_t current_dt;
+  uint8_t gps_signal_strength;
+} data;
+uint8_t *data_p;
 uint8_t gps_uart_data_ready = 0;
 uint8_t nmea_sentence_ready = 0;
 char nmea_sentence[128];
@@ -63,11 +67,25 @@ uint8_t handle_i2c_slave_tx(uint8_t status, i2c_mode_t last_mode, i2c_mode_t cur
 {
   if(status == TW_ST_SLA_ACK)
   {
-    current_dt_p = (uint8_t *)&current_dt;
+    data.current_dt.year   = gps_state.gprmc.date.year;
+    data.current_dt.month  = gps_state.gprmc.date.month;
+    data.current_dt.date   = gps_state.gprmc.date.day;
+    data.current_dt.hour   = gps_state.gprmc.time.hour;
+    data.current_dt.minute = gps_state.gprmc.time.minute;
+    data.current_dt.second = gps_state.gprmc.time.second;
+    data.current_dt.millisecond =
+        current_time_ms < 1000 ? current_time_ms : 0;
+    data.current_dt.day_of_week = rtc_find_dow(
+        gps_state.gprmc.date.year,
+        gps_state.gprmc.date.month,
+        gps_state.gprmc.date.day);
+    data.gps_signal_strength = gps_state.gpgga.satellites_tracked <= 9 ?
+        gps_state.gpgga.satellites_tracked : 9;
+    data_p = (uint8_t *)&data;
   }
 
   if(status == TW_ST_SLA_ACK || status == TW_ST_DATA_ACK || status == TW_ST_DATA_NACK)
-    TWDR = *current_dt_p++;
+    TWDR = *data_p++;
 
   TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWINT) | _BV(TWEA);
 
@@ -80,7 +98,7 @@ uint8_t handle_i2c_slave_rx(uint8_t status, i2c_mode_t last_mode, i2c_mode_t cur
 
   if(last_mode != current_mode)
   {
-    current_dt_p = (uint8_t *)&current_dt;
+    data_p = (uint8_t *)&data;
   }
 
   if(status == TW_SR_DATA_ACK || status == TW_SR_DATA_NACK)
@@ -148,15 +166,6 @@ void handle_nmea_gprmc(char *sentence)
 
   if(invalidity & (NMEA_INVALID_DATE | NMEA_INVALID_TIME))
     return;
-
-  current_dt.year   = gprmc.date.year;
-  current_dt.month  = gprmc.date.month;
-  current_dt.date   = gprmc.date.day;
-  current_dt.hour   = gprmc.time.hour;
-  current_dt.minute = gprmc.time.minute;
-  current_dt.second = gprmc.time.second;
-  current_dt.day_of_week =
-      rtc_find_dow(gprmc.date.year, gprmc.date.month, gprmc.date.day);
 }
 
 void print_nmea_gpgga(nmea_gpgga_t *gpgga)
@@ -305,6 +314,8 @@ void handle_nmea_sentence(void)
   if(strncmp_P(nmea_sentence, PSTR("$GPRMC,"), 7) == 0)
   {
     handle_nmea_gprmc(nmea_sentence);
+    printf("Time at reset was ms = %d\n", last_time_ms);
+    //current_time_ms = 0;
   }
   else if(strncmp_P(nmea_sentence, PSTR("$GPGGA,"), 7) == 0)
   {
@@ -363,6 +374,39 @@ void print_gps_state(void)
   print_nmea_gpgsv_summary(gps_state.gpgsv);
 }
 
+ISR(TIMER0_COMPA_vect)
+{
+  TCNT0 = 0;
+  current_time_ms += 1;
+}
+
+ISR(PCINT3_vect)
+{
+  if(PIND & _BV(PD4))
+  {
+    last_time_ms = current_time_ms;
+    current_time_ms = 0;
+  }
+}
+
+void init_timer_hz(uint16_t hz)
+{
+  /* Set pre-scaler to /64 */
+  TCCR0B |= _BV(CS01) | _BV(CS00);
+
+  /* Force Output Compare A */
+  TCCR0B |= _BV(FOC0A);
+
+  /* Output Compare Interrupt Enable A */
+  TIMSK0 |= _BV(OCIE0A);
+
+  /* Set initial counter value */
+  TCNT0 = 0;
+
+  /* Set Output Compare Register to aim for hz interrupt */
+  OCR0A = (F_CPU / 64) / hz ;
+}
+
 int main(void)
 {
   char gps_state_printed = 0;
@@ -380,6 +424,14 @@ int main(void)
   i2c_slave_init(0x60, I2C_ADDRESS_MASK_SINGLE, I2C_GCALL_DISABLED);
   i2c_global.sr_callback = handle_i2c_slave_rx;
   i2c_global.st_callback = handle_i2c_slave_tx;
+
+  current_time_ms = 0;
+  init_timer_hz(1000 + 24);
+
+  PIND |= _BV(PD4);
+  PORTD &= ~_BV(PD4);
+  PCMSK3 |= _BV(PCINT28);
+  PCICR |= _BV(PCIE3);
 
   sei();
 

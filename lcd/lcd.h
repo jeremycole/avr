@@ -68,6 +68,8 @@ typedef struct _lcd_t
   lcd_port_t e;
 } lcd_t;
 
+typedef uint8_t lcd_cg_t[8];
+
 void lcd_init(lcd_t *lcd);
 uint8_t lcd_read_sr(lcd_t *lcd);
 void lcd_write_ir(lcd_t *lcd, uint8_t instruction);

@@ -87,8 +87,8 @@ float extract_decimal(char *str, int sign)
 unsigned int parse_float(char **fragment, float *out)
 {
   char *token;
-  int16_t whole;
-  char frac[10];
+  int16_t whole = 0;
+  char frac[10] = {0,0,0,0,0,0,0,0,0,0};
 
   if((token = strsep(fragment, delim)) == NULL)
     return NMEA_INVALID_SENTENCE;
@@ -149,8 +149,8 @@ unsigned int parse_position(char **fragment, nmea_position_t *position)
 {
   unsigned int invalidity = 0;
   char *token;
-  char lat_hemisphere, lon_hemisphere;
-  uint16_t degrees, minutes, minutes_frac;
+  char lat_hemisphere='N', lon_hemisphere='E';
+  uint16_t degrees=0, minutes=0, minutes_frac=0;
 
   /* Latitude degrees and minutes */
   if((token = strsep(fragment, delim)) == NULL)
@@ -175,6 +175,7 @@ unsigned int parse_position(char **fragment, nmea_position_t *position)
     &lat_hemisphere
   );
 
+  degrees=0; minutes=0; minutes_frac=0;
   /* Longitude degrees and minutes */
   if((token = strsep(fragment, delim)) == NULL)
     return NMEA_INVALID_SENTENCE;

@@ -30,6 +30,7 @@ typedef struct _rtc_datetime_24h_t
   int8_t  hour;
   int8_t  minute;
   int8_t  second;
+  int16_t millisecond;
   int8_t  day_of_week;
 } rtc_datetime_24h_t;
 

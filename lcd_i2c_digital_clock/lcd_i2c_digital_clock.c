@@ -68,48 +68,133 @@ lcd_t lcd = {
   .e    = {&PINB, &PORTB, &DDRB, PB0}
 };
 
-#define MAX_DT_AGE_CS 150
+#define MAX_DATA_AGE_CS 150
 
-rtc_datetime_24h_t current_dt;
-uint8_t *current_dt_p;
-uint8_t current_dt_age = MAX_DT_AGE_CS;
+struct {
+  rtc_datetime_24h_t current_dt;
+  uint8_t gps_signal_strength;
+} data;
+uint8_t *data_p;
+uint8_t data_age = MAX_DATA_AGE_CS;
 
-#define CG_HAPPY 0
-uint8_t cg_happy[8] = {
+#define CG_GPS_ICON 0
+lcd_cg_t cg_gps_icon = {
   0b00000000,
   0b00000000,
-  0b00001010,
   0b00000000,
-  0b00010001,
-  0b00001110,
-  0b00000000,
-  0b00000000,
+  0b00000110,
+  0b00001000,
+  0b00001011,
+  0b00001001,
+  0b00000110,
 };
 
-#define CG_SAD 1
-uint8_t cg_sad[8] = {
-  0b00000000,
-  0b00000000,
-  0b00001010,
-  0b00000000,
-  0b00001110,
-  0b00010001,
-  0b00000000,
-  0b00000000,
+#define CG_GPS_SIGNAL 1
+#define CG_GPS_SIGNAL_SIZE 9
+lcd_cg_t cg_gps_signal[9] = {
+  { // 0
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00010001,
+    0b00001010,
+    0b00000100,
+    0b00001010,
+    0b00010001,
+  },
+  { // 1
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000001,
+  },
+  { // 2
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000001,
+    0b00000011,
+  },
+  { // 3
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000001,
+    0b00000011,
+    0b00000111,
+  },
+  { // 4
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000001,
+    0b00000011,
+    0b00000111,
+    0b00001111,
+  },
+  { // 5
+    0b00000000,
+    0b00000000,
+    0b00000000,
+    0b00000001,
+    0b00000011,
+    0b00000111,
+    0b00001111,
+    0b00011111,
+  },
+  { // 6
+    0b00000000,
+    0b00000000,
+    0b00000001,
+    0b00000011,
+    0b00000111,
+    0b00001111,
+    0b00011111,
+    0b00011111,
+  },
+  { // 7
+    0b00000000,
+    0b00000001,
+    0b00000011,
+    0b00000111,
+    0b00001111,
+    0b00011111,
+    0b00011111,
+    0b00011111,
+  },
+  { // 8
+    0b00000001,
+    0b00000011,
+    0b00000111,
+    0b00001111,
+    0b00011111,
+    0b00011111,
+    0b00011111,
+    0b00011111,
+  },
 };
-
 
 uint8_t handle_i2c_slave_rx(uint8_t status, i2c_mode_t last_mode, i2c_mode_t current_mode)
 {
   if(last_mode != current_mode)
   {
-    current_dt_p = (uint8_t *)&current_dt;
+    data_p = (uint8_t *)&data;
   }
 
   if(status == TW_SR_DATA_ACK || status == TW_SR_DATA_NACK)
-    *current_dt_p++ = TWDR;
+    *data_p++ = TWDR;
 
-  current_dt_age = 0;
+  data_age = 0;
 
   return 0;
 }
@@ -148,34 +233,41 @@ int main(void)
 
   lcd_init(&lcd);
 
-  lcd_cg_define(&lcd, CG_HAPPY, cg_happy);
-  lcd_cg_define(&lcd, CG_SAD, cg_sad);
+  lcd_cg_define(&lcd, CG_GPS_ICON, cg_gps_icon);
+  lcd_cg_define(&lcd, CG_GPS_SIGNAL, cg_gps_signal[0]);
 
   while(1)
   {
-    if(current_dt_age == 0)
+    if(data_age == 0)
     {
       sprintf(s, "%-10s%-4s%2i",
-        rtc_dow_names[current_dt.day_of_week],
-        rtc_month_abbreviations[current_dt.month],
-        current_dt.date);
+        rtc_dow_names[data.current_dt.day_of_week],
+        rtc_month_abbreviations[data.current_dt.month],
+        data.current_dt.date);
       lcd_move_cursor(&lcd, 0, 0);
       lcd_write_string(&lcd, s, strlen(s));
 
       sprintf(s, "    %02i:%02i:%02i    ",
-        current_dt.hour, current_dt.minute, current_dt.second);
+        data.current_dt.hour,
+        data.current_dt.minute,
+        data.current_dt.second);
       lcd_move_cursor(&lcd, 1, 0);
       lcd_write_string(&lcd, s, strlen(s));
 
-      lcd_move_cursor(&lcd, 1, 15);
-      lcd_write_char(&lcd, CG_HAPPY);
+      lcd_move_cursor(&lcd, 1, 14);
+      lcd_write_char(&lcd, CG_GPS_ICON);
 
-      if(current_dt.hour >= 6 && current_dt.hour < 21)
+      lcd_cg_define(&lcd, CG_GPS_SIGNAL,
+          cg_gps_signal[data.gps_signal_strength]);
+      lcd_move_cursor(&lcd, 1, 15);
+      lcd_write_char(&lcd, CG_GPS_SIGNAL);
+
+      if(data.current_dt.hour >= 6 && data.current_dt.hour < 21)
         LCD_BKL_OCR = 255;
       else
         LCD_BKL_OCR = 64;
 
-    } else if(current_dt_age == MAX_DT_AGE_CS) {
+    } else if(data_age == MAX_DATA_AGE_CS) {
       LCD_BKL_OCR = 255;
       lcd_clear(&lcd);
       lcd_move_cursor(&lcd, 0, 0);
@@ -184,8 +276,8 @@ int main(void)
       lcd_write_string(&lcd, "valid data!", 11);
     }
 
-    if(current_dt_age <= MAX_DT_AGE_CS) {
-      current_dt_age++;
+    if(data_age <= MAX_DATA_AGE_CS) {
+      data_age++;
     }
 
     _delay_ms(10);

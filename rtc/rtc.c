@@ -149,6 +149,7 @@ int8_t rtc_find_dst_offset(rtc_datetime_24h_t time, rtc_dst_date_t dst_dates[])
 
 uint8_t rtc_offset_time(rtc_datetime_24h_t *from, rtc_datetime_24h_t *to, uint8_t offset_hours)
 {
+  to->millisecond = from->millisecond;
   to->second = from->second;
   to->minute = from->minute;
   to->hour   = from->hour;

@@ -238,6 +238,7 @@ uint8_t rtc_ds1307_read(rtc_datetime_24h_t *dt)
   dt->hour   = (raw.hour_1   * 10) + raw.hour_0;
   dt->minute = (raw.minute_1 * 10) + raw.minute_0;
   dt->second = (raw.second_1 * 10) + raw.second_0;
+  dt->millisecond = 0; /* Not supported by this RTC */
   dt->day_of_week = raw.day_of_week;
 
   dt->year += (dt->year < RTC_DS1307_YEAR_EPOCH)?2000:1900;
