@@ -92,7 +92,7 @@ lcd_cg_t cg_gps_icon = {
 #define CG_GPS_SIGNAL 1
 #define CG_GPS_SIGNAL_SIZE 9
 lcd_cg_t cg_gps_signal[9] = {
-  { // 0
+  { // 0, "X" drawing
     0b00000000,
     0b00000000,
     0b00000000,
@@ -254,20 +254,28 @@ int main(void)
       lcd_move_cursor(&lcd, 1, 0);
       lcd_write_string(&lcd, s, strlen(s));
 
+      // Re-define the CG_GPS_SIGNAL character to a depiction of the current
+      // signal strength (an "X" for no signal, or a number of bars).
+      lcd_cg_define(&lcd, CG_GPS_SIGNAL,
+          cg_gps_signal[data.gps_signal_strength]);
+
+      // Draw the "G" icon.
       lcd_move_cursor(&lcd, 1, 14);
       lcd_write_char(&lcd, CG_GPS_ICON);
 
-      lcd_cg_define(&lcd, CG_GPS_SIGNAL,
-          cg_gps_signal[data.gps_signal_strength]);
+      // Draw the previously defined signal strength icon.
       lcd_move_cursor(&lcd, 1, 15);
       lcd_write_char(&lcd, CG_GPS_SIGNAL);
 
+      // Between 9pm and 6am, dim the display, otherwise maximum brightness.
       if(data.current_dt.hour >= 6 && data.current_dt.hour < 21)
         LCD_BKL_OCR = 255;
       else
         LCD_BKL_OCR = 64;
 
     } else if(data_age == MAX_DATA_AGE_CS) {
+      // The last data we've received is too old to display. It's better to
+      // display an error than an incorrect time.
       LCD_BKL_OCR = 255;
       lcd_clear(&lcd);
       lcd_move_cursor(&lcd, 0, 0);
