@@ -738,6 +738,8 @@ int main(void)
     "    S YYYY-MM-DD hh:mm:ss\n"
     "  Set the timezone offset from UTC:\n"
     "    O <tz_offset> <dst_offset>\n"
+    "  Set the time from GPS (if available):"
+    "    s\n"
     "\n"
   ));
 
