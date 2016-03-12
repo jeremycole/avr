@@ -57,7 +57,7 @@ int main(void)
   //uart_t *u1;
   _delay_ms(1000);
 
-  u0 = uart_init("0", 0);
+  u0 = uart_init("0", UART_BAUD_SELECT(9600, F_CPU));
   //u1 = uart_init("1", 0);
   uart_init_stdout(u0);
 
@@ -71,7 +71,7 @@ int main(void)
   {
     uart_puts(u0, "Test on UART 0!\r\n");
     //uart_puts(u1, "Test on UART 1!\r\n");
-    _delay_ms(1000);
+    _delay_ms(100);
   }
 
   return(0);
