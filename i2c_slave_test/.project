@@ -4,6 +4,7 @@
 	<comment></comment>
 	<projects>
 		<project>i2c</project>
+		<project>uart</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

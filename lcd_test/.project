@@ -3,6 +3,8 @@
 	<name>lcd_test</name>
 	<comment></comment>
 	<projects>
+		<project>lcd</project>
+		<project>uart</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
