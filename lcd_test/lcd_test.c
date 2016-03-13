@@ -48,7 +48,7 @@ int main(void)
 
   _delay_ms(1000);
 
-  u0 = uart_init("0", 0);
+  u0 = uart_init("0", UART_BAUD_SELECT(38400, F_CPU));
   uart_init_stdout(u0);
 
   DDRB |= _BV(PB3) | _BV(PB4);
