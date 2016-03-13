@@ -240,6 +240,11 @@ int main(void)
   {
     if(data_age == 0)
     {
+      // Re-define the CG_GPS_SIGNAL character to a depiction of the current
+      // signal strength (an "X" for no signal, or a number of bars).
+      lcd_cg_define(&lcd, CG_GPS_SIGNAL,
+          cg_gps_signal[data.gps_signal_strength]);
+
       sprintf(s, "%-10s%-4s%2i",
         rtc_dow_names[data.current_dt.day_of_week],
         rtc_month_abbreviations[data.current_dt.month],
@@ -253,11 +258,6 @@ int main(void)
         data.current_dt.second);
       lcd_move_cursor(&lcd, 1, 0);
       lcd_write_string(&lcd, s, strlen(s));
-
-      // Re-define the CG_GPS_SIGNAL character to a depiction of the current
-      // signal strength (an "X" for no signal, or a number of bars).
-      lcd_cg_define(&lcd, CG_GPS_SIGNAL,
-          cg_gps_signal[data.gps_signal_strength]);
 
       // Draw the "G" icon.
       lcd_move_cursor(&lcd, 1, 14);
