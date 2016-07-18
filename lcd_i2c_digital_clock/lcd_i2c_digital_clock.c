@@ -52,6 +52,7 @@ be implemented by collecting a byte "register" before accepting more data.
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 
+#define I2C_SCL_CLOCK 400000L
 #include <i2c.h>
 #include <uart.h>
 #include <lcd.h>
