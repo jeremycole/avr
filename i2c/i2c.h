@@ -63,6 +63,7 @@ typedef struct _i2c_t
   i2c_mode_t mode;
   i2c_callback_t *st_callback;
   i2c_callback_t *sr_callback;
+  i2c_callback_t *stop_callback;
 } i2c_t;
 
 extern volatile i2c_t i2c_global;

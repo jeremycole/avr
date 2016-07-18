@@ -26,8 +26,8 @@
 #include "i2c.h"
 
 /* I2C clock in Hz */
-#ifndef SCL_CLOCK
-#define SCL_CLOCK  400000L
+#ifndef I2C_SCL_CLOCK
+#define I2C_SCL_CLOCK  100000L
 #endif
 
 #define I2C_WAIT_CLEAR(v, b)  while(!((v) & _BV((b))))
@@ -83,6 +83,7 @@ ISR(TWI_vect)
     if(i2c_global.st_callback)
     {
       (*i2c_global.st_callback)(status, last_mode, i2c_global.mode);
+      TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWINT) | _BV(TWEA);
     }
     break;
   case I2C_MODE_SR:
@@ -94,6 +95,14 @@ ISR(TWI_vect)
     break;
 
   case I2C_MODE_IDLE:
+    if(last_mode == I2C_MODE_SR)
+    {
+      if(i2c_global.stop_callback)
+      {
+        (*i2c_global.stop_callback)(status, last_mode, i2c_global.mode);
+      }
+    }
+    break;
   case I2C_MODE_UNKNOWN:
   default:
     break;
@@ -105,7 +114,7 @@ ISR(TWI_vect)
  */
 void i2c_init(void)
 {
-  TWBR = ((F_CPU/SCL_CLOCK)-16)/2;
+  TWBR = ((F_CPU/I2C_SCL_CLOCK)-16)/2;
   i2c_global.mode = I2C_MODE_IDLE;
   i2c_global.st_callback = NULL;
   i2c_global.sr_callback = NULL;
@@ -116,7 +125,7 @@ uint8_t i2c_slave_init(uint8_t address, uint8_t address_mask, uint8_t gcall)
 {
   TWAR  = address | (gcall & 0x01);
   TWAMR = address_mask;
-  TWCR  = _BV(TWEN) | _BV(TWIE) | _BV(TWEA);
+  TWCR  = _BV(TWEN) | _BV(TWIE) | _BV(TWINT) | _BV(TWEA);
 
   return TWAR;
 }
@@ -131,7 +140,6 @@ uint8_t i2c_start(uint8_t address, uint8_t mode)
 {
   uint8_t twst;
 
-  I2C_DISABLE_ISR();
   i2c_global.mode = (mode == I2C_WRITE)?I2C_MODE_MT:I2C_MODE_MR;
 
   /* Send START condition */
