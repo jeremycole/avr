@@ -27,7 +27,9 @@
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 
+#define I2C_SCL_CLOCK 400000L
 #include <i2c.h>
+
 #include <rtc.h>
 #include <rtc_ds1307.h>
 #include <uart.h>
