@@ -153,7 +153,7 @@ uint8_t i2c_start(uint8_t address, uint8_t mode)
   if ( (twst != TW_START) && (twst != TW_REP_START)) return twst;
 
   /* Send device address */
-  TWDR = address | mode;
+  TWDR = (address << 1) | mode;
   TWCR = _BV(TWINT) | _BV(TWEN);
 
   /* Wait until transmission completed and ACK/NACK has been received */
